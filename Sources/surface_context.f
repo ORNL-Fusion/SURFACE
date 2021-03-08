@@ -123,7 +123,7 @@
       status = NF90_OPEN(TRIM(surface_file_name), NF90_NOWRITE, ncid)
 
       status = NF90_INQ_DIMID(ncid, 'ng', size_dim)
-      status = NF90_INQUIRE_DIMLEN(ncid, size_dim, len=size)
+      status = NF90_INQUIRE_DIMENSION(ncid, size_dim, len=size)
 
       ALLOCATE(surface_context_construct%x(size))
       ALLOCATE(surface_context_construct%y(size))
