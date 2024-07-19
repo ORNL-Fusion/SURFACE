@@ -249,7 +249,7 @@
       start_time = profiler_get_start_time()
 
       p_grid => primed_grid_class(101, bmw_state_flags_off,                    &
-     &                            this%vmec, '', '', parallel, io_unit)
+     &                            this%vmec, '', parallel, io_unit)
 
       total = parallel%end(SIZE(this%x))
       total = CEILING(total/parallel%num_threads)
