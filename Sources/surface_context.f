@@ -12,6 +12,7 @@
 
       MODULE surface_context
       USE stel_kinds, ONLY: rprec
+      USE vmec_file
 
       IMPLICIT NONE
 
@@ -37,6 +38,8 @@
          REAL (rprec), DIMENSION(:), POINTER :: a_y
 !>  Virtual Surface current in the z direction.
          REAL (rprec), DIMENSION(:), POINTER :: a_z
+!>  VMEC equilibrium object.
+         CLASS (vmec_file_class), POINTER    :: vmec => null()
       CONTAINS
          PROCEDURE, PASS :: set_vector_potential =>                            &
      &      surface_context_set_vector_potential
@@ -72,7 +75,6 @@
      &                                   surface_file_name, parallel,          &
      &                                   io_unit)
       USE bmw_parallel_context
-      USE read_wout_mod, ONLY: read_wout_file, extcur
       USE ezcdf
 
       IMPLICIT NONE
@@ -105,19 +107,8 @@
 
       ALLOCATE(surface_context_construct)
 
-      CALL read_wout_file(wout_file_name, status)
-      IF (status .ne. 0) THEN
-         IF (parallel%offset .eq. 0) THEN
-            WRITE (io_unit,1000) TRIM(wout_file_name)
-         END IF
-         CALL bmw_parallel_context_abort(status)
-      END IF
-      IF (.not.ALLOCATED(extcur)) THEN
-         IF (parallel%offset .eq. 0) THEN
-            WRITE (io_unit,1001) TRIM(wout_file_name)
-         END IF
-         CALL bmw_parallel_context_abort(status)
-      END IF
+      surface_context_construct%vmec =>                                        &
+     &   vmec_file_class(TRIM(wout_file_name))
 
 !  Parse the surface file.
       status = NF90_OPEN(TRIM(surface_file_name), NF90_NOWRITE, ncid)
@@ -199,6 +190,11 @@
          this%a_z => null()
       END IF
 
+      IF (ASSOCIATED(this%vmec)) THEN
+         DEALLOCATE(this%vmec)
+         this%vmec => null()
+      END IF
+
       END SUBROUTINE
 
 !*******************************************************************************
@@ -226,10 +222,6 @@
      &                                                parallel)
       USE bmw_parallel_context
       USE stel_constants, ONLY: twopi, mu0
-      USE read_wout_mod, ONLY: ns, rmnc, rmns, zmnc, zmns, xm, xn,             &
-     &                         bsubumnc, bsubvmnc, bsubumns, bsubvmns,         &
-     &                         xm_nyq, xn_nyq, mnmax, mnmax_nyq, lasym,        &
-     &                         isigng
       USE bmw_state_flags, ONLY: clear_screen, progress,                       &
      &                           bmw_state_flags_off
       USE, INTRINSIC :: iso_fortran_env, Only : output_unit
@@ -256,8 +248,8 @@
 !  Start of executable code
       start_time = profiler_get_start_time()
 
-      p_grid => primed_grid_class(101, bmw_state_flags_off, '',                &
-     &                            parallel, io_unit)
+      p_grid => primed_grid_class(101, bmw_state_flags_off,                    &
+     &                            this%vmec, '', '', parallel, io_unit)
 
       total = parallel%end(SIZE(this%x))
       total = CEILING(total/parallel%num_threads)
